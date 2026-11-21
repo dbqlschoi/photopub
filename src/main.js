@@ -92,9 +92,7 @@ function renderCal() {
     } else cells += `<button class="cell${today}"${liveStyle} data-day="${k}"><span class="d ${cls}">${d}</span></button>`;
   }
   const wk = t('wk').map((w, i) => `<span class="${i === 5 ? 'sat' : i === 6 ? 'sun' : ''}">${w}</span>`).join('');
-  const banner = backupDue()
-    ? `<button class="notice" data-act="goBackup">${t('backupDue')}</button>`
-    : (isIOS && !isStandalone() && !LS.get('iosTipClosed') ? `<div class="notice"><span data-act="installHelp">${t('iosTip')}</span><button data-act="closeTip" aria-label="${t('close')}">✕</button></div>` : '');
+  const banner = isIOS && !isStandalone() && !LS.get('iosTipClosed') ? `<div class="notice"><span data-act="installHelp">${t('iosTip')}</span><button data-act="closeTip" aria-label="${t('close')}">✕</button></div>` : '';
   app.innerHTML = monthHeader() + banner + `<div class="chips">${chips}</div><div class="wk">${wk}</div><div class="grid" id="grid">${cells}</div>`;
 }
 function renderDay() {
@@ -166,13 +164,6 @@ const LS = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 };
-if (!LS.get('firstUse')) LS.set('firstUse', String(Date.now()));
-const hasPhotos = () => Object.values(S.months).some(mo => Object.values(mo).some(d => d && d.photos && d.photos.length));
-function backupDue() {
-  if (!hasPhotos()) return false;
-  const last = +(LS.get('lastBackup') || LS.get('firstUse') || Date.now());
-  return Date.now() - last > 30 * 86400000;
-}
 const fmtDate = ms => new Date(ms).toLocaleDateString(getLang() === 'ko' ? 'ko-KR' : 'en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
 const fmtSize = b => b > 1e9 ? (b / 1e9).toFixed(1) + ' GB' : Math.max(1, Math.round(b / 1e6)) + ' MB';
 
@@ -491,7 +482,6 @@ document.addEventListener('click', e => {
     }
     case 'backup': doBackup(); break;
     case 'restore': doRestore(); break;
-    case 'goBackup': S.view = 'people'; render(); window.scrollTo(0, document.body.scrollHeight); break;
     case 'install': if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); }); } break;
     case 'installHelp': installHelp(); break;
     case 'closeTip': LS.set('iosTipClosed', '1'); render(); break;

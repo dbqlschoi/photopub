@@ -23,7 +23,6 @@ Hosting use doesn't grow with the number of users' photos: the app is ~40 KB gzi
 
 Because data lives only on the phone, users should use **Backup** (People tab) to save a `.zip`
 (data.json + photos) to Google Drive, KakaoTalk, email, etc. **Restore** replaces everything on the phone with a backup.
-The app reminds users when it has been over 30 days since the last backup.
 
 ## Develop
 
