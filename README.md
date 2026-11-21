@@ -12,7 +12,7 @@ live-stream marker, month image (📸), stats, Korean/English, Backup/Restore (.
 1. Firebase project `photopub-c4878`: Build → **Hosting** → Get started (click through). No Authentication, Firestore or Storage needed.
 2. Project settings → **Service accounts** → **Generate new private key**.
 3. GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
-   name `FIREBASE_SERVICE_ACCOUNT`, value = the whole JSON file.
+   name `FIREBASE_SERVICE_ACCOUNT` (or `PHOTOPUB`), value = the whole JSON file.
 
 Every push to `main` then builds and deploys to https://photopub-c4878.web.app.
 Until the secret exists, the workflow skips the deploy.

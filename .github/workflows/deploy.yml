@@ -14,7 +14,7 @@ jobs:
       - name: Check Firebase setup
         id: check
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.PHOTOPUB }}
         run: |
           if [ -z "$SA" ]; then
             echo "::notice::Skipping deploy: add the FIREBASE_SERVICE_ACCOUNT secret (see README)."
@@ -38,5 +38,5 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.PHOTOPUB }}
           channelId: live
