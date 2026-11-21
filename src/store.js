@@ -5,23 +5,42 @@ import { zip, unzip, strToU8, strFromU8 } from 'fflate';
 const DB_NAME = 'photopub';
 const newId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-async function resize(file, max, quality) {
-  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+// Turn whatever the phone gives us into something we can draw. Reads the bytes
+// first, so a photo that can't be downloaded (e.g. cloud-only while offline) fails
+// here instead of being saved as a broken file. HEIC/HEIF photos are converted.
+const loadImgEl = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function decode(file) {
+  let bytes;
+  try { bytes = new Blob([await file.arrayBuffer()], { type: file.type || 'image/jpeg' }); }
+  catch (e) { const err = new Error('unreadable'); err.code = 'unreadable'; throw err; }
+  try { return await createImageBitmap(bytes, { imageOrientation: 'from-image' }); } catch (e) {}
+  try {
+    const url = URL.createObjectURL(bytes);
+    try { return await loadImgEl(url); } finally { URL.revokeObjectURL(url); }
+  } catch (e) {}
+  {
+    try {
+      const { default: heic2any } = await import('heic2any');
+      const out = await heic2any({ blob: bytes, toType: 'image/jpeg', quality: 0.92 });
+      return await createImageBitmap(Array.isArray(out) ? out[0] : out);
+    } catch (e) {}
+  }
+  const err = new Error('undecodable'); err.code = 'undecodable'; throw err;
+}
+async function encode(src, max, quality) {
+  const w = src.width, h = src.height;
+  const s = Math.min(1, max / Math.max(w, h));
   const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * s);
-  c.height = Math.round(bmp.height * s);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  c.width = Math.round(w * s);
+  c.height = Math.round(h * s);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
   const b = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
-  if (!b) throw new Error('encode failed');
+  if (!b || !b.size) throw new Error('encode failed');
   return b;
 }
 async function prepare(file) {
-  try {
-    return { full: await resize(file, 1600, 0.85), thumb: await resize(file, 480, 0.8) };
-  } catch (e) {
-    return { full: file, thumb: file };
-  }
+  const src = await decode(file);
+  return { full: await encode(src, 1600, 0.85), thumb: await encode(src, 480, 0.8) };
 }
 
 function idbOpen() {

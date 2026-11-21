@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "cropperjs": "^1.7.0",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "heic2any": "^0.0.4"
   },
   "devDependencies": {
     "vite": "^7.0.0"

@@ -1,6 +1,7 @@
 // Small offline cache for the app shell. Photos are cached by the browser.
-const CACHE = 'photopub-v1';
-self.addEventListener('install', e => self.skipWaiting());
+const CACHE = 'photopub-v2';
+const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())
 ));

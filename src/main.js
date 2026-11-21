@@ -188,8 +188,7 @@ function renderPeople() {
   <p class="small" style="margin:8px 4px 0">${last ? t('lastBackup', fmtDate(+last)) : t('neverBackup')} · <span id="used"></span></p>
   <p class="small" style="margin:4px 4px 0">${t('backupNote')}</p>
   ${install}
-  <p class="small" style="margin:24px 4px 8px">${t('language')}</p>${langSwitch()}
-  <p class="small" style="margin:24px 4px">${t('localNote')}</p>`;
+  <p class="small" style="margin:24px 4px 8px">${t('language')}</p>${langSwitch()}`;
   usage().then(u => { const el = $('#used'); if (el) el.textContent = t('usedSpace', fmtSize(u)); });
 }
 
@@ -452,7 +451,7 @@ async function addPhotos(files) {
       if (S.view === 'day' && S.dayKey === k && S.dayPid === pid) render();
     } catch (e) {
       console.error(e);
-      toast(navigator.onLine ? t('addFail') : t('offline'));
+      toast(t(e && e.code === 'unreadable' ? 'photoUnreadable' : e && e.code === 'undecodable' ? 'photoFormat' : 'addFail'));
     }
   }
   if (ok === arr.length) toast(ok > 1 ? t('addedN', ok) : t('added1'));
