@@ -88,7 +88,7 @@ function renderCal() {
     const today = (k === todayKey ? ' today' : '') + (isLive ? ' live' : '');
     const liveStyle = isLive ? ` style="--live:${person(S.sel).color}"` : '';
     if (ph.length) {
-      cells += `<button class="cell has${today}"${liveStyle} data-day="${k}"><img src="${store.thumb(ph[0])}" data-thumb="${ph[0].id}" alt=""><span class="d">${d}</span>${ph.length > 1 ? `<span class="plus">+${ph.length - 1}</span>` : ''}</button>`;
+      cells += `<button class="cell has${today}"${liveStyle} data-day="${k}"><img src="${store.thumb(ph[0])}" data-thumb="${ph[0].id}" alt="">${ph[0].type === 'video' ? '<span class="play">▶</span>' : ''}<span class="d">${d}</span>${ph.length > 1 ? `<span class="plus">+${ph.length - 1}</span>` : ''}</button>`;
     } else cells += `<button class="cell${today}"${liveStyle} data-day="${k}"><span class="d ${cls}">${d}</span></button>`;
   }
   const wk = t('wk').map((w, i) => `<span class="${i === 5 ? 'sat' : i === 6 ? 'sun' : ''}">${w}</span>`).join('');
@@ -110,16 +110,25 @@ function renderDay() {
     <span style="font-size:17px;font-weight:600;min-width:130px;text-align:center">${t('dayTitle', y, m, d, date.getDay())}</span>
     <button class="iconbtn" data-act="dnext" aria-label="›">›</button></div><span style="width:40px"></span></div>
   ${chips}
-  ${ph.length ? `<div style="position:relative"><div class="gallery" id="gal">${ph.map(x => `<img src="${store.url(x)}" data-full="${x.id}" alt="">`).join('')}</div>
+  ${ph.length ? `<div style="position:relative"><div class="gallery" id="gal">${ph.map(x => x.type === 'video' ? `<video src="${store.url(x)}" poster="${store.thumb(x)}" controls playsinline preload="metadata"></video>` : `<img src="${store.url(x)}" data-full="${x.id}" alt="">`).join('')}</div>
     <span id="cnt" style="position:absolute;right:10px;top:10px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;padding:3px 9px;border-radius:8px">${S.idx + 1} / ${ph.length}</span></div>`
     : `<button class="empty" data-act="pick"><span style="font-size:34px">＋</span><span>${t('dayEmpty', esc(p.name))}</span></button>`}
-  <div class="thumbs">${ph.map((x, i) => `<button class="${i === S.idx ? 'on' : ''}" data-th="${i}"><img src="${store.thumb(x)}" data-thumb="${x.id}" alt=""></button>`).join('')}<button class="addtile" data-act="pick" aria-label="${t('addPhotos')}">＋</button></div>
+  <div class="thumbs">${ph.map((x, i) => `<button class="${i === S.idx ? 'on' : ''}" data-th="${i}"><img src="${store.thumb(x)}" data-thumb="${x.id}" alt="">${x.type === 'video' ? '<span class="play">▶</span>' : ''}</button>`).join('')}<button class="addtile" data-act="pick" aria-label="${t('addPhotos')}">＋</button></div>
   <button class="btn primary" data-act="pick">${t('addPhotos')}</button>
   <button class="btn livebtn ${day.live ? 'on' : ''}" style="margin-top:8px;--live:${p.color}" data-act="live">${day.live ? '✓ ' + t('liveOff') : t('live')}</button>
-  ${ph.length ? `<div class="row" style="margin-top:8px"><button class="btn" data-act="crop">✂️ ${t('crop')}</button><button class="btn danger" data-act="delPhoto">${t('delPhoto')}</button></div>` : ''}
+  ${ph.length ? `<div class="row" style="margin-top:8px"><button class="btn" data-act="crop" id="cropBtn">✂️ ${t('crop')}</button><button class="btn danger" data-act="delPhoto" id="delBtn">${t('delPhoto')}</button></div>` : ''}
   <p class="small" style="margin:16px 0 6px">${t('note')}</p>
   <textarea id="note" placeholder="${t('notePh')}">${esc(day.note || '')}</textarea>`;
   const gal = $('#gal');
+  // Crop is for photos only; the delete label says photo or video.
+  const syncActions = () => {
+    const cur = ph[S.idx];
+    const vid = cur && cur.type === 'video';
+    const cb = $('#cropBtn'), db = $('#delBtn');
+    if (cb) cb.style.display = vid ? 'none' : '';
+    if (db) db.textContent = t(vid ? 'delVideo' : 'delPhoto');
+  };
+  syncActions();
   if (gal) {
     gal.scrollLeft = S.idx * gal.clientWidth;
     gal.addEventListener('scroll', () => {
@@ -128,6 +137,8 @@ function renderDay() {
         S.idx = i;
         $('#cnt').textContent = `${i + 1} / ${ph.length}`;
         document.querySelectorAll('.thumbs [data-th]').forEach((b, j) => b.classList.toggle('on', j === i));
+        gal.querySelectorAll('video').forEach(v => v.pause());
+        syncActions();
       }
     }, { passive: true });
   }
@@ -184,11 +195,23 @@ function renderPeople() {
 }
 
 /* ---------- backup / restore ---------- */
-async function doBackup() {
+const hasVideos = () => Object.values(S.months).some(mo => Object.values(mo).some(d => d && (d.photos || []).some(x => x.type === 'video')));
+function doBackup() {
+  if (!hasVideos()) { makeBackup(true); return; }
+  sheet(`<h3>${t('backupWhatQ')}</h3><p class="small" style="font-size:15px;margin:0 0 14px">${t('backupWhatText')}</p>
+    <button class="btn primary" id="ball">${t('backupAll')}</button>
+    <button class="btn" style="margin-top:8px" id="bphotos">${t('backupPhotos')}</button>
+    <button class="btn" style="margin-top:8px" id="bcancel">${t('cancel')}</button>`, (o, close) => {
+    o.querySelector('#ball').onclick = () => { close(); makeBackup(true); };
+    o.querySelector('#bphotos').onclick = () => { close(); makeBackup(false); };
+    o.querySelector('#bcancel').onclick = close;
+  });
+}
+async function makeBackup(includeVideos) {
   toast(t('backupMaking'), true);
   let blob;
   try {
-    blob = await store.exportZip((i, n) => toast(t('backupProgress', i, n), true));
+    blob = await store.exportZip((i, n) => toast(t('backupProgress', i, n), true), includeVideos);
   } catch (e) { console.error(e); toast(t('backupFail')); return; }
   clearToast();
   const d = new Date();
@@ -216,7 +239,7 @@ function doRestore() {
       if (!f) return;
       toast(t('restoring'), true);
       try {
-        const data = await store.importZip(f);
+        const data = await store.importZip(f, (a, b) => toast(t('restoringPct', Math.round(a / b * 100)), true));
         S.people = data.people; S.months = data.months; S.sel = null;
         LS.set('lastBackup', String(Date.now()));
         toast(t('restored'));
@@ -283,7 +306,7 @@ function confirmSheet(title, text, label, fn) {
 async function openCrop() {
   const pid = S.dayPid, k = S.dayKey;
   const photo = photosOf(pid, k)[S.idx];
-  if (!photo) return;
+  if (!photo || photo.type === 'video') return;
   const src = await store.load(photo, 'full').catch(() => '');
   if (!src) { toast(t('cropFail')); return; }
   const o = document.createElement('div');
@@ -380,6 +403,12 @@ async function makeShot() {
         const src = await store.load(ph[0], 'thumb');
         const img = await loadImg(src);
         cover(ctx, img, x, y, w, cellH);
+        if (ph[0].type === 'video') {
+          ctx.fillStyle = 'rgba(0,0,0,0.45)';
+          ctx.beginPath(); ctx.arc(x + w / 2, y + cellH / 2, 30, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.moveTo(x + w / 2 - 10, y + cellH / 2 - 16); ctx.lineTo(x + w / 2 - 10, y + cellH / 2 + 16); ctx.lineTo(x + w / 2 + 16, y + cellH / 2); ctx.fill();
+        }
         if (ph.length > 1) {
           const label = `+${ph.length - 1}`;
           ctx.font = font(600, 28);
@@ -433,7 +462,7 @@ async function addPhotos(files) {
   const pid = S.dayPid, k = S.dayKey, arr = [...files];
   let ok = 0;
   for (let i = 0; i < arr.length; i++) {
-    toast(arr.length > 1 ? t('addingN', i + 1, arr.length) : t('adding'), true);
+    toast(arr.length > 1 ? t('addingN', i + 1, arr.length) : t(/^video\//.test(arr[i].type) ? 'addingVideo' : 'adding'), true);
     try {
       const photo = await store.upload(arr[i]);
       const cur = getDay(pid, k) || {};
