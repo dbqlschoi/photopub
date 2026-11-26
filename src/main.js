@@ -85,7 +85,7 @@ function renderCal() {
     const k = dkey(S.y, S.m, d), wd = (first + d - 1) % 7;
     const cls = wd === 5 ? 'sat' : wd === 6 ? 'sun' : '';
     const ph = photosOf(S.sel, k);
-    const isLive = (getDay(S.sel, k) || {}).live;
+    const isLive = liveOn() && (getDay(S.sel, k) || {}).live;
     const today = (k === todayKey ? ' today' : '') + (isLive ? ' live' : '');
     const liveStyle = isLive ? ` style="--live:${person(S.sel).color}"` : '';
     if (ph.length) {
@@ -116,7 +116,7 @@ function renderDay() {
     : `<button class="empty" data-act="pick"><span style="font-size:34px">＋</span><span>${t('dayEmpty', esc(p.name))}</span></button>`}
   <div class="thumbs">${ph.map((x, i) => `<button class="${i === S.idx ? 'on' : ''}" data-th="${i}"><img src="${store.thumb(x)}" data-thumb="${x.id}" alt="">${x.type === 'video' ? '<span class="play">▶</span>' : ''}</button>`).join('')}<button class="addtile" data-act="pick" aria-label="${t('addPhotos')}">＋</button></div>
   ${ph.length > 1 ? `<p class="small" style="margin:-2px 2px 8px">${t('reorderHint')}</p>` : ''}
-  <button class="btn livebtn ${day.live ? 'on' : ''}" style="margin-top:8px;--live:${p.color}" data-act="live">${day.live ? '✓ ' + t('liveOff') : t('live')}</button>
+  ${liveOn() ? `<button class="btn livebtn ${day.live ? 'on' : ''}" style="margin-top:8px;--live:${p.color}" data-act="live">${day.live ? '✓ ' + t('liveOff') : t('live')}</button>` : ''}
   ${ph.length ? `<div class="row" style="margin-top:8px"><button class="btn" data-act="crop" id="cropBtn">✂️ ${t('crop')}</button><button class="btn danger" data-act="delPhoto" id="delBtn">${t('delPhoto')}</button></div>` : ''}
   <p class="small" style="margin:16px 0 6px">${t('note')}</p>
   <textarea id="note" placeholder="${t('notePh')}">${esc(day.note || '')}</textarea>`;
@@ -290,11 +290,13 @@ function renderPeople() {
   <p class="small" style="margin:8px 4px 0">${last ? t('lastBackup', fmtDate(+last)) : t('neverBackup')} · <span id="used"></span></p>
   <p class="small" style="margin:4px 4px 0">${t('backupNote')}</p>
   ${install}
-  <p class="small" style="margin:24px 4px 8px">${t('language')}</p>${langSwitch()}`;
+  <p class="small" style="margin:24px 4px 8px">${t('language')}</p>${langSwitch()}
+  <div class="setrow"><span>${t('liveToggle')}</span><button class="switch ${liveOn() ? 'on' : ''}" data-act="toggleLive" role="switch" aria-checked="${liveOn()}" aria-label="${t('liveToggle')}"><i></i></button></div>`;
   usage().then(u => { const el = $('#used'); if (el) el.textContent = t('usedSpace', fmtSize(u)); });
 }
 
 /* ---------- backup / restore ---------- */
+const liveOn = () => LS.get('showLive') !== '0';
 const hasVideos = () => Object.values(S.months).some(mo => Object.values(mo).some(d => d && (d.photos || []).some(x => x.type === 'video')));
 function doBackup() {
   if (!hasVideos()) { makeBackup(true); return; }
@@ -497,7 +499,7 @@ async function makeShot() {
     const pos = first + d - 1, col = pos % 7, row = Math.floor(pos / 7);
     const x = Math.round(col * colW), y = top + wkH + row * cellH, w = Math.round((col + 1) * colW) - x;
     const ph = photosOf(p.id, dkey(S.y, S.m, d));
-    if ((getDay(p.id, dkey(S.y, S.m, d)) || {}).live) liveBoxes.push([x, y, w, cellH]);
+    if (liveOn() && (getDay(p.id, dkey(S.y, S.m, d)) || {}).live) liveBoxes.push([x, y, w, cellH]);
     if (ph.length) {
       jobs.push((async () => {
         const src = await store.load(ph[0], 'thumb');
@@ -610,6 +612,7 @@ document.addEventListener('click', e => {
       break;
     }
     case 'backup': doBackup(); break;
+    case 'toggleLive': LS.set('showLive', liveOn() ? '0' : '1'); render(); break;
     case 'restore': doRestore(); break;
     case 'install': if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); }); } break;
     case 'installHelp': installHelp(); break;
