@@ -114,6 +114,7 @@ function renderDay() {
     <span id="cnt" style="position:absolute;right:10px;top:10px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;padding:3px 9px;border-radius:8px">${S.idx + 1} / ${ph.length}</span></div>`
     : `<button class="empty" data-act="pick"><span style="font-size:34px">＋</span><span>${t('dayEmpty', esc(p.name))}</span></button>`}
   <div class="thumbs">${ph.map((x, i) => `<button class="${i === S.idx ? 'on' : ''}" data-th="${i}"><img src="${store.thumb(x)}" data-thumb="${x.id}" alt="">${x.type === 'video' ? '<span class="play">▶</span>' : ''}</button>`).join('')}<button class="addtile" data-act="pick" aria-label="${t('addPhotos')}">＋</button></div>
+  ${ph.length > 1 ? `<p class="small" style="margin:-2px 2px 8px">${t('reorderHint')}</p>` : ''}
   <button class="btn primary" data-act="pick">${t('addPhotos')}</button>
   <button class="btn livebtn ${day.live ? 'on' : ''}" style="margin-top:8px;--live:${p.color}" data-act="live">${day.live ? '✓ ' + t('liveOff') : t('live')}</button>
   ${ph.length ? `<div class="row" style="margin-top:8px"><button class="btn" data-act="crop" id="cropBtn">✂️ ${t('crop')}</button><button class="btn danger" data-act="delPhoto" id="delBtn">${t('delPhoto')}</button></div>` : ''}
@@ -129,6 +130,7 @@ function renderDay() {
     if (db) db.textContent = t(vid ? 'delVideo' : 'delPhoto');
   };
   syncActions();
+  if (ph.length > 1) enableReorder(p.id, k);
   if (gal) {
     gal.scrollLeft = S.idx * gal.clientWidth;
     gal.addEventListener('scroll', () => {
@@ -150,6 +152,79 @@ function renderDay() {
     toast(t('noteSaved'));
   });
 }
+/* ---------- reorder photos: press and hold 1 second, then drag ---------- */
+let drag = null;
+let suppressClick = false;
+document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
+document.addEventListener('click', e => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; } }, true);
+function enableReorder(pid, k) {
+  const wrap = $('.thumbs');
+  wrap.addEventListener('contextmenu', e => e.preventDefault());
+  let timer = null, sx = 0, sy = 0;
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  const onMove = e => {
+    if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel();
+    if (!drag) return;
+    moveGhost(e.clientX, e.clientY);
+    const items = [...wrap.querySelectorAll('[data-th]')];
+    const over = items.find(b => {
+      if (b === drag.btn) return false;
+      const r = b.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+    if (over) { if (items.indexOf(drag.btn) < items.indexOf(over)) over.after(drag.btn); else over.before(drag.btn); }
+  };
+  const onEnd = () => {
+    cancel();
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onEnd);
+    window.removeEventListener('pointercancel', onEnd);
+    if (!drag) return;
+    const { btn, ghost } = drag;
+    ghost.remove();
+    btn.classList.remove('dragging');
+    drag = null;
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 400);
+    const order = [...wrap.querySelectorAll('[data-th]')].map(x => +x.dataset.th);
+    if (order.every((v, i) => v === i)) return;
+    const cur = getDay(pid, k) || {};
+    const old = cur.photos || [];
+    const shown = old[S.idx];
+    const next = order.map(i => old[i]).filter(Boolean);
+    setDay(pid, k, { ...cur, photos: next });
+    S.idx = Math.max(0, next.indexOf(shown));
+    render();
+    toast(t('reordered'));
+  };
+  wrap.querySelectorAll('[data-th]').forEach(btn => {
+    btn.addEventListener('pointerdown', e => {
+      if (drag) return;
+      sx = e.clientX; sy = e.clientY;
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onEnd);
+      window.addEventListener('pointercancel', onEnd);
+      timer = setTimeout(() => {
+        timer = null;
+        if (navigator.vibrate) navigator.vibrate(30);
+        const r = btn.getBoundingClientRect();
+        const ghost = btn.cloneNode(true);
+        ghost.className = 'ghost';
+        ghost.style.width = r.width + 'px';
+        ghost.style.height = r.height + 'px';
+        document.body.appendChild(ghost);
+        btn.classList.add('dragging');
+        drag = { btn, ghost, ox: sx - r.left, oy: sy - r.top };
+        moveGhost(sx, sy);
+      }, 1000);
+    });
+  });
+}
+function moveGhost(x, y) {
+  if (!drag) return;
+  drag.ghost.style.transform = `translate(${x - drag.ox}px, ${y - drag.oy}px) scale(1.08)`;
+}
+
 function renderStats() {
   const months = [];
   for (let i = 5; i >= 0; i--) { const dt = new Date(S.y, S.m - i, 1); months.push([dt.getFullYear(), dt.getMonth()]); }

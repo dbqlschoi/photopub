@@ -89,3 +89,9 @@ textarea{min-height:70px;resize:vertical}
 .gallery video{flex:none;width:100%;height:58vh;max-height:520px;object-fit:contain;scroll-snap-align:center;background:#000}
 .play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:1}
 .thumbs button{position:relative}
+.thumbs button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.thumbs img{pointer-events:none;-webkit-user-drag:none}
+.thumbs button.dragging{opacity:.25}
+.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;border-radius:8px;overflow:hidden;border:2px solid var(--acc);box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.ghost img{width:100%;height:100%;object-fit:cover;display:block}
+.ghost .play{width:22px;height:22px}
