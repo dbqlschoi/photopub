@@ -290,7 +290,7 @@ async function makeBackup(includeVideos) {
   } catch (e) { console.error(e); toast(t('backupFail')); return; }
   clearToast();
   const d = new Date();
-  const name = `photo-calendar-backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.zip`;
+  const name = `collectbook-backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.zip`;
   const file = new File([blob], name, { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
@@ -516,7 +516,7 @@ async function shot() {
   if (!blob) { toast(t('shotFail')); return; }
   clearToast();
   const p = person(S.sel);
-  const name = `photo-calendar-${S.y}-${pad(S.m + 1)}-${p.name.replace(/[^\p{L}\p{N}_-]+/gu, '')}.png`;
+  const name = `collectbook-${S.y}-${pad(S.m + 1)}-${p.name.replace(/[^\p{L}\p{N}_-]+/gu, '')}.png`;
   const file = new File([blob], name, { type: 'image/png' });
   const url = URL.createObjectURL(blob);
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));

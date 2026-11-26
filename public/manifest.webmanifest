@@ -1,6 +1,6 @@
 {
-  "name": "Photo Calendar",
-  "short_name": "Photo Cal",
+  "name": "Collectbook",
+  "short_name": "Collectbook",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
