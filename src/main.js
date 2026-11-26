@@ -92,7 +92,7 @@ function renderCal() {
     } else cells += `<button class="cell${today}"${liveStyle} data-day="${k}"><span class="d ${cls}">${d}</span></button>`;
   }
   const wk = t('wk').map((w, i) => `<span class="${i === 5 ? 'sat' : i === 6 ? 'sun' : ''}">${w}</span>`).join('');
-  const banner = isIOS && !isStandalone() && !LS.get('iosTipClosed') ? `<div class="notice"><span data-act="installHelp">${t('iosTip')}</span><button data-act="closeTip" aria-label="${t('close')}">✕</button></div>` : '';
+  const banner = '';
   app.innerHTML = monthHeader() + banner + `<div class="chips">${chips}</div><div class="wk">${wk}</div><div class="grid" id="grid">${cells}</div>`;
 }
 function renderDay() {
@@ -243,7 +243,32 @@ function langSwitch() {
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 let installEvt = null;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (S.view === 'people') render(); });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (S.view === 'people') render(); maybeInstallPopup(); });
+
+/* Install pop-up when the app is opened in the browser without being installed.
+   Android: one-tap install. iPhone: short Safari steps. "Later" hides it for 3 days. */
+let popupShown = false;
+function maybeInstallPopup() {
+  if (popupShown || isStandalone() || !S.ready || document.querySelector('.overlay')) return;
+  const later = +(LS.get('installLater') || 0);
+  if (Date.now() - later < 3 * 86400000) return;
+  if (!installEvt && !isIOS) return;
+  popupShown = true;
+  const body = installEvt
+    ? `<p class="small" style="font-size:15px;margin:0 0 16px;line-height:1.6">${t('installPopText')}</p>
+       <button class="btn primary" id="pinstall">${t('installBtn')}</button>`
+    : `<p class="small" style="font-size:15px;margin:0 0 10px;line-height:1.6">${t('installPopText')}</p>
+       <ol style="margin:0 0 16px;padding-left:20px;line-height:1.7;font-size:15px">${t('iosSteps').slice(1, 3).map(x => `<li>${x}</li>`).join('')}</ol>
+       <button class="btn primary" id="pok">${t('ok')}</button>`;
+  sheet(`<div class="row" style="gap:14px;margin-bottom:12px"><img src="/icon-grid-192.png" alt="" style="width:56px;height:56px;border-radius:14px"><h3 style="margin:0">${t('installPopTitle')}</h3></div>
+    ${body}<button class="btn" style="margin-top:8px" id="plater">${t('installLater')}</button>`, (o, close) => {
+    const p1 = o.querySelector('#pinstall');
+    if (p1) p1.onclick = () => { close(); if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); }); } };
+    const p2 = o.querySelector('#pok');
+    if (p2) p2.onclick = () => { LS.set('installLater', String(Date.now())); close(); };
+    o.querySelector('#plater').onclick = () => { LS.set('installLater', String(Date.now())); close(); };
+  });
+}
 window.addEventListener('appinstalled', () => { installEvt = null; if (S.ready) render(); });
 
 const LS = {
@@ -588,7 +613,6 @@ document.addEventListener('click', e => {
     case 'restore': doRestore(); break;
     case 'install': if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); }); } break;
     case 'installHelp': installHelp(); break;
-    case 'closeTip': LS.set('iosTipClosed', '1'); render(); break;
     case 'delPhoto':
       confirmSheet(t('delPhotoQ'), t('delPhotoText'), t('del'), () => {
         const p = S.dayPid, k = S.dayKey, cur = getDay(p, k) || {};
@@ -622,6 +646,7 @@ function applyData(data) {
   S.months = data.months;
   S.ready = true;
   render();
+  setTimeout(maybeInstallPopup, 800);
 }
 const loadingMsg = key => { $('#app').innerHTML = `<p class="small" style="text-align:center;margin-top:40vh">${t(key)}</p>`; };
 loadingMsg('loading');
