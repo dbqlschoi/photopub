@@ -57,7 +57,7 @@ const STR = {
   ko: {
     loading: '불러오는 중…', loadingPhotos: '사진을 불러오는 중…',
     navCal: '달력', navStats: '통계', navPeople: '사람',
-    addFirst: '첫 번째 사람을 추가해 주십시오', addFirstSub: '사람마다 각자의 사진 달력이 생깁니다.',
+    addFirst: '첫 번째 사람을 추가해주세요!', addFirstSub: '사람마다 각자의 사진 달력이 생깁니다.',
     addPerson: '사람 추가', addChip: '＋ 추가', screenshot: '이번 달 이미지로 저장',
     dayEmpty: n => `${n}의 이 날 사진·동영상 추가`, addPhotos: '사진·동영상 추가', delPhoto: '이 사진 삭제', delVideo: '이 동영상 삭제',
     crop: '자르기 / 크기 조절', note: '메모', notePh: '메모...', noteSaved: '메모가 저장되었습니다.',
