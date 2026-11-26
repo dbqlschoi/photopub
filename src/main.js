@@ -3,7 +3,8 @@ import 'cropperjs/dist/cropper.css';
 import { openStore, persist, usage } from './store.js';
 import { t, getLang, setLang } from './i18n.js';
 
-const COLORS = ['#1D9E75', '#D85A30', '#7F77DD', '#D4537E', '#378ADD', '#BA7517', '#639922', '#5F5E5A'];
+const COLORS = ['#1D9E75', '#D85A30', '#7F77DD', '#D4537E', '#378ADD', '#BA7517', '#639922',
+  '#5F5E5A', '#E24B4A', '#E8B015', '#3FB5E0', '#1E3A8A', '#B07CD8', '#8B5E3C'];
 const CELL_RATIO = 1.85; // calendar cell height / width
 const now = new Date();
 const S = { people: [], months: {}, sel: null, view: 'cal', y: now.getFullYear(), m: now.getMonth(), dayKey: null, dayPid: null, idx: 0, ready: false };
@@ -298,7 +299,7 @@ function renderPeople() {
 const hasVideos = () => Object.values(S.months).some(mo => Object.values(mo).some(d => d && (d.photos || []).some(x => x.type === 'video')));
 function doBackup() {
   if (!hasVideos()) { makeBackup(true); return; }
-  sheet(`<h3>${t('backupWhatQ')}</h3><p class="small" style="font-size:15px;margin:0 0 14px">${t('backupWhatText')}</p>
+  sheet(`<h3 style="margin-bottom:16px">${t('backupWhatQ')}</h3>
     <button class="btn primary" id="ball">${t('backupAll')}</button>
     <button class="btn" style="margin-top:8px" id="bphotos">${t('backupPhotos')}</button>
     <button class="btn" style="margin-top:8px" id="bcancel">${t('cancel')}</button>`, (o, close) => {

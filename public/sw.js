@@ -1,5 +1,5 @@
 // Small offline cache for the app shell. Photos are cached by the browser.
-const CACHE = 'photopub-v3';
+const CACHE = 'photopub-v4';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-grid-192.png', '/icon-grid-512.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(
@@ -8,6 +8,12 @@ self.addEventListener('activate', e => e.waitUntil(
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/__/')) return;
+  // The manifest (app name and icon) always comes from the network when online.
+  if (url.pathname === '/manifest.webmanifest') {
+    e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return r; })
+      .catch(() => caches.match(e.request)));
+    return;
+  }
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put('/', c)); return r; })
       .catch(() => caches.match('/')));
