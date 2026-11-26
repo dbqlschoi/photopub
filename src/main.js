@@ -116,7 +116,6 @@ function renderDay() {
     : `<button class="empty" data-act="pick"><span style="font-size:34px">＋</span><span>${t('dayEmpty', esc(p.name))}</span></button>`}
   <div class="thumbs">${ph.map((x, i) => `<button class="${i === S.idx ? 'on' : ''}" data-th="${i}"><img src="${store.thumb(x)}" data-thumb="${x.id}" alt="">${x.type === 'video' ? '<span class="play">▶</span>' : ''}</button>`).join('')}<button class="addtile" data-act="pick" aria-label="${t('addPhotos')}">＋</button></div>
   ${ph.length > 1 ? `<p class="small" style="margin:-2px 2px 8px">${t('reorderHint')}</p>` : ''}
-  <button class="btn primary" data-act="pick">${t('addPhotos')}</button>
   <button class="btn livebtn ${day.live ? 'on' : ''}" style="margin-top:8px;--live:${p.color}" data-act="live">${day.live ? '✓ ' + t('liveOff') : t('live')}</button>
   ${ph.length ? `<div class="row" style="margin-top:8px"><button class="btn" data-act="crop" id="cropBtn">✂️ ${t('crop')}</button><button class="btn danger" data-act="delPhoto" id="delBtn">${t('delPhoto')}</button></div>` : ''}
   <p class="small" style="margin:16px 0 6px">${t('note')}</p>
