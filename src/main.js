@@ -1,6 +1,7 @@
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
 import { openStore, persist, usage } from './store.js';
+import { initAnalytics, track } from './analytics.js';
 import { t, getLang, setLang } from './i18n.js';
 
 const COLORS = ['#1D9E75', '#D85A30', '#7F77DD', '#D4537E', '#378ADD', '#BA7517', '#639922',
@@ -254,6 +255,7 @@ function maybeInstallPopup() {
   if (Date.now() - later < 3 * 86400000) return;
   if (!installEvt && !isIOS) return;
   popupShown = true;
+  track('install_popup_shown', { platform: platformName() });
   const body = installEvt
     ? `<p class="small" style="font-size:15px;margin:0 0 16px;line-height:1.6">${t('installPopText')}</p>
        <button class="btn primary" id="pinstall">${t('installBtn')}</button>`
@@ -263,13 +265,14 @@ function maybeInstallPopup() {
   sheet(`<div class="row" style="gap:14px;margin-bottom:12px"><img src="/icon-grid-192.png" alt="" style="width:56px;height:56px;border-radius:14px"><h3 style="margin:0">${t('installPopTitle')}</h3></div>
     ${body}<button class="btn" style="margin-top:8px" id="plater">${t('installLater')}</button>`, (o, close) => {
     const p1 = o.querySelector('#pinstall');
-    if (p1) p1.onclick = () => { close(); if (installEvt) { installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); }); } };
+    if (p1) p1.onclick = () => { close(); if (installEvt) { installEvt.prompt(); installEvt.userChoice.then(c => track('install_prompt', { outcome: c && c.outcome })).finally(() => { installEvt = null; render(); }); } };
     const p2 = o.querySelector('#pok');
     if (p2) p2.onclick = () => { LS.set('installLater', String(Date.now())); close(); };
     o.querySelector('#plater').onclick = () => { LS.set('installLater', String(Date.now())); close(); };
   });
 }
-window.addEventListener('appinstalled', () => { installEvt = null; if (S.ready) render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; track('app_installed', { platform: platformName() }); if (S.ready) render(); });
+function platformName() { return isIOS ? (/iPad/.test(navigator.userAgent) || navigator.maxTouchPoints > 1 && !/iPhone/.test(navigator.userAgent) ? 'ipad' : 'iphone') : /Android/.test(navigator.userAgent) ? 'android' : 'other'; }
 
 const LS = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -577,6 +580,7 @@ async function addPhotos(files) {
     }
   }
   if (ok === arr.length) toast(ok > 1 ? t('addedN', ok) : t('added1'));
+  if (ok) track('add_media', { count: ok, videos: arr.filter(f => /^video\//.test(f.type)).length });
 }
 function shiftDay(n) { const { y, m, d } = parseKey(S.dayKey); const dt = new Date(y, m, d + n); S.dayKey = dkey(dt.getFullYear(), dt.getMonth(), dt.getDate()); S.idx = 0; render(); }
 function shiftMonth(n) { const dt = new Date(S.y, S.m + n, 1); S.y = dt.getFullYear(); S.m = dt.getMonth(); render(); }
@@ -653,8 +657,14 @@ function applyData(data) {
 }
 const loadingMsg = key => { $('#app').innerHTML = `<p class="small" style="text-align:center;margin-top:40vh">${t(key)}</p>`; };
 loadingMsg('loading');
+initAnalytics({ display_mode: isStandalone() ? 'installed' : 'browser', app_lang: getLang() });
 openStore()
-  .then(async st => { store = st; applyData(await st.readAll()); })
+  .then(async st => {
+    store = st; applyData(await st.readAll());
+    setTimeout(() => {
+      track('app_open', { display_mode: isStandalone() ? 'installed' : 'browser', platform: platformName(), people: S.people.length });
+    }, 1500);
+  })
   .catch(e => { console.error(e); loadingMsg('startFail'); });
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
